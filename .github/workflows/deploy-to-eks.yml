@@ -46,6 +46,6 @@ jobs:
 
     - name: Deploy to EKS (optional)
       run: |
-        aws eks update-kubeconfig --region $AWS_REGION --name your-eks-cluster-name
+        aws eks update-kubeconfig --region $AWS_REGION --name ha-webapp-cluster
         kubectl set image deployment/sample-webapp sample-webapp=$ECR_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
         kubectl rollout status deployment/sample-webapp
