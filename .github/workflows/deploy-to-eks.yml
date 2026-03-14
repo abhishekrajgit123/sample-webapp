@@ -9,6 +9,8 @@ env:
   AWS_REGION: ap-south-1
   ECR_ACCOUNT_ID: 932316879568
   ECR_REPOSITORY: sample-webapp
+  NAMESPACE: myapp
+  DEPLOYMENT_NAME: sample-webapp
 
 jobs:
   build-and-deploy:
@@ -44,8 +46,22 @@ jobs:
         docker push $ECR_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
 
-    - name: Deploy to EKS (optional)
+    - name: Deploy to EKS
       run: |
+        # Update kubeconfig
         aws eks update-kubeconfig --region $AWS_REGION --name ha-webapp-cluster
-        kubectl set image deployment/sample-webapp sample-webapp=$ECR_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
-        kubectl rollout status deployment/sample-webapp
+
+        # Create namespace if not exists
+        kubectl get namespace $NAMESPACE || kubectl create namespace $NAMESPACE
+
+        # Check if deployment exists
+        if kubectl get deployment $DEPLOYMENT_NAME -n $NAMESPACE; then
+          # Update image if deployment exists
+          kubectl set image deployment/$DEPLOYMENT_NAME \
+            $DEPLOYMENT_NAME=$ECR_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest \
+            -n $NAMESPACE
+          kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE
+        else
+          # Apply deployment.yaml if deployment doesn't exist
+          kubectl apply -f deployment.yaml -n $NAMESPACE
+        fi
